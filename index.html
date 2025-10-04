@@ -51,9 +51,8 @@
         const videoContainer = document.getElementById('videoContainer');
         const responseOutput = document.getElementById('responseOutput');
         let pollingInterval;
-
-        // IMPORTANT: Replace this with your actual Render URL once deployed.
-        const serverUrl = 'https://sora-api-server.onrender.com'; // Use http://localhost:3000 for local testing
+        
+        const serverUrl = 'https://sora-api-server.onrender.com';
 
         const resetUI = () => {
             submitBtn.disabled = false;
@@ -66,24 +65,23 @@
 
             pollingInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`${serverUrl}/status/${taskId}`);
-                    const data = await response.json();
+                    // CORRECTED: This now sends a POST request to the /status endpoint
+                    const response = await fetch(`${serverUrl}/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ taskId: taskId }) // The taskId is in the body
+                    });
                     
+                    const data = await response.json();
                     responseOutput.textContent = JSON.stringify(data, null, 2);
 
-                    if (!response.ok) {
-                        throw new Error(data.error || 'Failed to get status');
-                    }
+                    if (!response.ok) throw new Error(data.error || 'Failed to get status');
                     
                     statusText.textContent = `Status: ${data.status || 'checking'}...`;
 
                     if (data.status === 'success') {
                         statusText.textContent = 'Video generated successfully!';
-                        videoContainer.innerHTML = `
-                            <video controls autoplay muted class="w-full rounded-lg">
-                                <source src="${data.video_url}" type="video/mp4">
-                                Your browser does not support the video tag.
-                            </video>`;
+                        videoContainer.innerHTML = `<video controls autoplay muted class="w-full rounded-lg"><source src="${data.video_url}" type="video/mp4"></video>`;
                         resetUI();
                     } else if (data.status === 'failed') {
                         statusText.textContent = `Generation failed: ${data.error || 'Unknown error'}`;
@@ -93,7 +91,7 @@
                     statusText.textContent = `Error checking status: ${error.message}`;
                     resetUI();
                 }
-            }, 4000); // Poll every 4 seconds
+            }, 5000); // Poll every 5 seconds
         };
 
         submitBtn.addEventListener('click', async () => {
@@ -105,12 +103,11 @@
 
             submitBtn.disabled = true;
             loader.classList.remove('hidden');
-            statusText.textContent = '';
+            statusText.textContent = 'Sending prompt to server...';
             videoContainer.innerHTML = '';
             responseOutput.textContent = '';
 
             try {
-                statusText.textContent = 'Sending prompt to server...';
                 const genResponse = await fetch(`${serverUrl}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -120,10 +117,8 @@
                 const genData = await genResponse.json();
                 responseOutput.textContent = JSON.stringify(genData, null, 2);
 
-                if (!genResponse.ok) {
-                    throw new Error(genData.error || 'Failed to start generation');
-                }
-
+                if (!genResponse.ok) throw new Error(genData.error || 'Failed to start generation');
+                
                 if (genData.task_id) {
                     statusText.textContent = 'Task started. Periodically checking for result...';
                     pollStatus(genData.task_id);
