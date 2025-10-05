@@ -15,9 +15,8 @@ app.use(express.json());
 // 4. Securely get the API key
 const apiKey = process.env.SORA_API_KEY;
 
-// 5. Endpoint for starting the generation task
+// 5. Endpoint for starting the generation task (Unchanged)
 app.post('/generate', async (req, res) => {
-    // ... (this endpoint has not changed)
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: 'No prompt provided.' });
@@ -35,9 +34,8 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-// 6. Endpoint for checking the task status
+// 6. Endpoint for checking the task status (Unchanged)
 app.get('/task/:taskId', async (req, res) => {
-    // ... (this endpoint has not changed)
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
     const { taskId } = req.params;
     console.log(`Checking status for task: ${taskId}`);
@@ -53,7 +51,7 @@ app.get('/task/:taskId', async (req, res) => {
     }
 });
 
-// 7. *** NEW: The Video Proxy Endpoint ***
+// 7. *** THE UPGRADED VIDEO PROXY ***
 app.get('/video-proxy', async (req, res) => {
     try {
         const videoUrl = req.query.url;
@@ -65,13 +63,19 @@ app.get('/video-proxy', async (req, res) => {
 
         const videoResponse = await fetch(videoUrl);
         if (!videoResponse.ok) {
-            return res.status(videoResponse.status).send('Failed to fetch video.');
+            return res.status(videoResponse.status).send('Failed to fetch video from source.');
         }
         
-        // Forward the content type header from the video source
-        res.setHeader('Content-Type', videoResponse.headers.get('content-type'));
+        // Forward essential headers from the video source to the client.
+        // This gives the browser the information it needs to play the video.
+        res.writeHead(videoResponse.status, {
+            'Content-Type': videoResponse.headers.get('content-type'),
+            'Content-Length': videoResponse.headers.get('content-length'),
+            'Accept-Ranges': videoResponse.headers.get('accept-ranges'),
+            'Content-Range': videoResponse.headers.get('content-range'),
+        });
         
-        // Stream the video body directly to the client
+        // Stream the video body directly to the client.
         videoResponse.body.pipe(res);
 
     } catch (error) {
