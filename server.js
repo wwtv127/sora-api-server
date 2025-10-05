@@ -12,10 +12,10 @@ const API_DOMAIN = 'https://api.defapi.org';
 app.use(cors());
 app.use(express.json());
 
-// 4. Securely get the API key
+// 4. Securely get the API key from an environment variable
 const apiKey = process.env.SORA_API_KEY;
 
-// 5. Endpoint for starting the generation task (Unchanged)
+// 5. Endpoint for starting the generation task
 app.post('/generate', async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
     const { prompt } = req.body;
@@ -34,7 +34,7 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-// 6. Endpoint for checking the task status (Unchanged)
+// 6. Corrected endpoint for checking the task status
 app.get('/task/:taskId', async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
     const { taskId } = req.params;
@@ -51,40 +51,7 @@ app.get('/task/:taskId', async (req, res) => {
     }
 });
 
-// 7. *** THE UPGRADED VIDEO PROXY ***
-app.get('/video-proxy', async (req, res) => {
-    try {
-        const videoUrl = req.query.url;
-        if (!videoUrl) {
-            return res.status(400).send('No video URL provided.');
-        }
-
-        console.log(`Proxying video from: ${videoUrl}`);
-
-        const videoResponse = await fetch(videoUrl);
-        if (!videoResponse.ok) {
-            return res.status(videoResponse.status).send('Failed to fetch video from source.');
-        }
-        
-        // Forward essential headers from the video source to the client.
-        // This gives the browser the information it needs to play the video.
-        res.writeHead(videoResponse.status, {
-            'Content-Type': videoResponse.headers.get('content-type'),
-            'Content-Length': videoResponse.headers.get('content-length'),
-            'Accept-Ranges': videoResponse.headers.get('accept-ranges'),
-            'Content-Range': videoResponse.headers.get('content-range'),
-        });
-        
-        // Stream the video body directly to the client.
-        videoResponse.body.pipe(res);
-
-    } catch (error) {
-        console.error('Proxy error:', error);
-        res.status(500).send('Error proxying video.');
-    }
-});
-
-// 8. Start the server
+// 7. Start the server
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
