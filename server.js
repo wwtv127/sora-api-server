@@ -15,7 +15,7 @@ app.use(express.json());
 // 4. Securely get the API key from an environment variable
 const apiKey = process.env.SORA_API_KEY;
 
-// 5. Endpoint for starting the generation task (this has not changed)
+// 5. This is now the ONLY endpoint. It starts the generation task.
 app.post('/generate', async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
     const { prompt } = req.body;
@@ -34,27 +34,7 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-// 6. *** THE DEFINITIVE FIX ***
-// The endpoint is now `/task/:taskId` to align with the external API's purpose.
-// This is the route that was missing or broken on your deployed server.
-app.get('/task/:taskId', async (req, res) => {
-    if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
-    const { taskId } = req.params;
-    console.log(`Checking status for task: ${taskId}`);
-    try {
-        // The server calls the correct external DefAPI endpoint.
-        const apiResponse = await fetch(`${API_BASE_URL}/task?task_id=${taskId}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${apiKey}` }
-        });
-        const data = await apiResponse.json();
-        res.status(apiResponse.status).json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// 7. Start the server
+// 6. Start the server
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
