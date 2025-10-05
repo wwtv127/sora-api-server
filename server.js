@@ -1,6 +1,6 @@
 // 1. Import necessary tools
 const express = require('express');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const fetch = require('node-fetch');
 const cors = require('cors');
 
 // 2. Setup the Express app
@@ -15,7 +15,7 @@ app.use(express.json());
 // 4. Securely get the API key from an environment variable
 const apiKey = process.env.SORA_API_KEY;
 
-// 5. Endpoint for starting the generation task (This part was correct)
+// 5. Endpoint for starting the generation task (this has not changed)
 app.post('/generate', async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
     const { prompt } = req.body;
@@ -34,18 +34,18 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-// 6. CORRECTED: Endpoint for checking the task status
-// This now correctly uses a POST request, as required by the documentation.
-app.post('/status', async (req, res) => {
+// 6. *** THE DEFINITIVE FIX ***
+// The endpoint is now `/task/:taskId` to align with the external API's purpose.
+// This is the route that was missing or broken on your deployed server.
+app.get('/task/:taskId', async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
-    const { taskId } = req.body; // Get taskId from the request BODY
-    if (!taskId) return res.status(400).json({ error: 'No taskId provided.' });
+    const { taskId } = req.params;
     console.log(`Checking status for task: ${taskId}`);
     try {
-        const apiResponse = await fetch(`${API_BASE_URL}/task`, { // The URL is just /task
-            method: 'POST', // The method must be POST
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify({ task_id: taskId }) // The taskId is sent in the BODY
+        // The server calls the correct external DefAPI endpoint.
+        const apiResponse = await fetch(`${API_BASE_URL}/task?task_id=${taskId}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${apiKey}` }
         });
         const data = await apiResponse.json();
         res.status(apiResponse.status).json(data);
