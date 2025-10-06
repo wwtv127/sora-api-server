@@ -6,26 +6,33 @@ const cors = require('cors');
 // 2. Setup the Express app
 const app = express();
 const port = 3000;
-const API_DOMAIN = 'https://api.defapi.org';
+const API_DOMAIN = 'https://api.muapi.ai/api/v1';
 
 // 3. Apply Middleware
 app.use(cors());
 app.use(express.json());
 
-// 4. Securely get the API key from an environment variable
-const apiKey = process.env.SORA_API_KEY;
+// 4. Securely get the new API key from an environment variable
+// IMPORTANT: The key name has changed to match your script.
+const apiKey = process.env.MUAPIAPP_API_KEY;
 
-// 5. Endpoint for starting the generation task
+// 5. Endpoint for submitting the video generation task to the new API
 app.post('/generate', async (req, res) => {
-    if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
-    const { prompt } = req.body;
+    if (!apiKey) return res.status(500).json({ error: 'Server is missing MUAPIAPP_API_KEY.' });
+    
+    // Get the new parameters from the frontend
+    const { prompt, resolution, aspect_ratio } = req.body;
     if (!prompt) return res.status(400).json({ error: 'No prompt provided.' });
-    console.log(`Received prompt: "${prompt}"`);
+
+    console.log(`Received new prompt: "${prompt}"`);
     try {
-        const apiResponse = await fetch(`${API_DOMAIN}/api/sora2/gen`, {
+        const apiResponse = await fetch(`${API_DOMAIN}/openai-sora-2-text-to-video`, {
             method: 'POST',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify({ prompt })
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey // Use the new header key
+            },
+            body: JSON.stringify({ prompt, resolution, aspect_ratio })
         });
         const data = await apiResponse.json();
         res.status(apiResponse.status).json(data);
@@ -34,15 +41,16 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-// 6. Corrected endpoint for checking the task status
-app.get('/task/:taskId', async (req, res) => {
-    if (!apiKey) return res.status(500).json({ error: 'Server is missing API key.' });
-    const { taskId } = req.params;
-    console.log(`Checking status for task: ${taskId}`);
+// 6. Endpoint for polling the result from the new API
+app.get('/task/:requestId', async (req, res) => {
+    if (!apiKey) return res.status(500).json({ error: 'Server is missing MUAPIAPP_API_KEY.' });
+    
+    const { requestId } = req.params;
+    console.log(`Checking status for request_id: ${requestId}`);
     try {
-        const apiResponse = await fetch(`${API_DOMAIN}/api/task/query?task_id=${taskId}`, {
+        const apiResponse = await fetch(`${API_DOMAIN}/predictions/${requestId}/result`, {
             method: 'GET',
-            headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${apiKey}` }
+            headers: { 'x-api-key': apiKey }
         });
         const data = await apiResponse.json();
         res.status(apiResponse.status).json(data);
